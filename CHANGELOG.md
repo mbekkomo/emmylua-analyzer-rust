@@ -1,6 +1,9 @@
 # CHANGELOG
 
-# 0.4.5(unreleased)
+# 0.4.6(unreleased)
+
+
+# 0.4.5
 
 `FIX` Fix generic table infer issue
 
