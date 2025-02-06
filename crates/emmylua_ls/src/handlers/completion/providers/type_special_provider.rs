@@ -40,6 +40,9 @@ fn dispatch_type(
         }
         LuaType::DocFunction(func) => {
             add_lambda_completion(builder, &func);
+        },
+        LuaType::DocStringConst(key) => {
+            add_string_completion(builder, key.as_str());
         }
         _ => {}
     }
@@ -141,6 +144,17 @@ fn add_union_member_completion(
     Some(())
 }
 
+fn add_string_completion(builder: &mut CompletionBuilder, str: &str) -> Option<()> {
+    let completion_item = CompletionItem {
+        label: to_enum_label(builder, str),
+        kind: Some(lsp_types::CompletionItemKind::ENUM_MEMBER),
+        ..Default::default()
+    };
+
+    builder.add_completion_item(completion_item);
+    Some(())
+}
+
 fn get_token_should_type(builder: &mut CompletionBuilder) -> Option<LuaType> {
     let token = builder.trigger_token.clone();
     let mut parent_node = token.parent()?;
@@ -167,11 +181,19 @@ fn infer_call_arg_list(
     token: LuaSyntaxToken,
 ) -> Option<LuaType> {
     let call_expr = call_arg_list.get_parent::<LuaCallExpr>()?;
-    let param_idx = get_current_param_index(&call_expr, &token)?;
+    let mut param_idx = get_current_param_index(&call_expr, &token)?;
     let call_expr_func = builder
         .semantic_model
         .infer_call_expr_func(call_expr.clone(), Some(param_idx + 1))?;
-
+    let colon_call = call_expr.is_colon_call();
+    let colon_define = call_expr_func.is_colon_define();
+    match (colon_call, colon_define) {
+        (true, true) | (false, false) => {}
+        (false, true) => {}
+        (true, false) => {
+            param_idx += 1;
+        }
+    }
     let typ = call_expr_func.get_params().get(param_idx)?.1.clone()?;
     Some(typ)
 }
