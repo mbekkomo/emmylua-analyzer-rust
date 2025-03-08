@@ -9,6 +9,14 @@ on:
 jobs:
   build-and-cache:
     runs-on: ubuntu-latest
+    strategy:
+      fail-fast: true
+      matrix:
+        nixChannel:
+          - nixos-24.11 # update this when a new version is available
+          - nixos-unstable
+          - nixpkgs-unstable
+    
     steps:
     - uses: actions/checkout@v4
       with:
@@ -17,11 +25,8 @@ jobs:
     - name: Install Nix
       uses: cachix/install-nix-action@v22
       with:
-        nix_path: nixpkgs=channel:nixos-unstable
-    
-    - name: Install Rust toolchain
-      uses: dtolnay/rust-toolchain@stable
-    
+        nix_path: nixpkgs=https://github.com/NixOS/nixpkgs/refs/heads/${{ matrix.nixChannel }}.tar.gz
+        
     - name: Set version
       run: |
         echo "current ref ${{ github.ref }}"
@@ -32,13 +37,7 @@ jobs:
       with:
         name: emmylua-analyzer
         authToken: '${{ secrets.CACHIX }}'
-        pushFilter: ""
         
     - name: Build and cache dependencies
       run: |
-        if [ -f flake.nix ]; then
-          nix build
-        else
-          nix-build
-        fi
-
+        nix build .#emmylua_{ls,doc_cli,check}
